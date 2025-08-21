@@ -5,8 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/Cypherspark/sms-gateway/internal/core"
+	database "github.com/Cypherspark/sms-gateway/internal/db"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeProvider struct {
@@ -26,9 +27,9 @@ func (f *fakeProvider) Send(ctx context.Context, to, body string) (string, error
 	return "prov-ok", nil
 }
 
-func newStore(t *testing.T) (*core.Store, func()) {
-	db := startPostgres(t)
-	return &core.Store{DB: db.Pool}, db.Term
+func newStore(t *testing.T) *core.Store {
+	pg := database.StartTestPostgres(t)
+	return &core.Store{DB: pg.Pool}
 }
 
 func createUser(t *testing.T, s *core.Store, name string) string {
@@ -42,8 +43,7 @@ func topUp(t *testing.T, s *core.Store, user string, amount int) {
 }
 
 func TestTopUpAndBalance(t *testing.T) {
-	s, term := newStore(t)
-	defer term()
+	s := newStore(t)
 	uid := createUser(t, s, "acme")
 	topUp(t, s, uid, 100)
 	bal, err := s.GetBalance(context.Background(), uid)
@@ -52,8 +52,7 @@ func TestTopUpAndBalance(t *testing.T) {
 }
 
 func TestEnqueueAndCharge_IdempotentSingleDebit(t *testing.T) {
-	s, term := newStore(t)
-	defer term()
+	s := newStore(t)
 	uid := createUser(t, s, "acme")
 	topUp(t, s, uid, 10)
 
@@ -73,16 +72,14 @@ func TestEnqueueAndCharge_IdempotentSingleDebit(t *testing.T) {
 }
 
 func TestEnqueueInsufficientBalance(t *testing.T) {
-	s, term := newStore(t)
-	defer term()
+	s := newStore(t)
 	uid := createUser(t, s, "acme")
 	_, _, err := s.EnqueueAndCharge(context.Background(), core.SendRequest{UserID: uid, To: "+49", Body: "x"})
 	require.Error(t, err)
 }
 
 func TestClaimSendAndMark_Success(t *testing.T) {
-	s, term := newStore(t)
-	defer term()
+	s := newStore(t)
 	uid := createUser(t, s, "acme")
 	topUp(t, s, uid, 2)
 	_, _, err := s.EnqueueAndCharge(context.Background(), core.SendRequest{UserID: uid, To: "+49", Body: "ok"})
@@ -101,8 +98,7 @@ func TestClaimSendAndMark_Success(t *testing.T) {
 }
 
 func TestRefundOnPermanentFailure(t *testing.T) {
-	s, term := newStore(t)
-	defer term()
+	s := newStore(t)
 	uid := createUser(t, s, "acme")
 	topUp(t, s, uid, 1)
 	msgID, _, err := s.EnqueueAndCharge(context.Background(), core.SendRequest{UserID: uid, To: "+49", Body: "x"})
@@ -114,8 +110,7 @@ func TestRefundOnPermanentFailure(t *testing.T) {
 }
 
 func TestConcurrentClaim_SkipLocked_NoDuplicates(t *testing.T) {
-	s, term := newStore(t)
-	defer term()
+	s := newStore(t)
 	uid := createUser(t, s, "acme")
 	topUp(t, s, uid, 200)
 	for i := 0; i < 100; i++ {
@@ -130,9 +125,12 @@ func TestConcurrentClaim_SkipLocked_NoDuplicates(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			ids, _ := s.ClaimQueuedMessages(context.Background(), 25)
-			mu.Lock(); defer mu.Unlock()
+			mu.Lock()
+			defer mu.Unlock()
 			for _, id := range ids {
-				if seen[id] { t.Fatalf("duplicate claim: %s", id) }
+				if seen[id] {
+					t.Fatalf("duplicate claim: %s", id)
+				}
 				seen[id] = true
 			}
 		}()

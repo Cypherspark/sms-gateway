@@ -5,21 +5,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/Cypherspark/sms-gateway/internal/core"
+	"github.com/stretchr/testify/require"
+	database "github.com/Cypherspark/sms-gateway/internal/db"
 )
 
 type fakeProv struct{ ok bool }
 
 func (f *fakeProv) Send(ctx context.Context, to, body string) (string, error) {
-	if !f.ok { return "", context.DeadlineExceeded }
+	if !f.ok {
+		return "", context.DeadlineExceeded
+	}
 	return "ok", nil
 }
 
 // Light smoke-test around worker logic (claim → send → mark sent)
 func TestWorkerLikeFlow(t *testing.T) {
-	db := startPostgres(t)
-	defer db.Term()
+	db := database.StartTestPostgres(t)
 	store := &core.Store{DB: db.Pool}
 	uid, err := store.CreateUser(context.Background(), "acme")
 	require.NoError(t, err)

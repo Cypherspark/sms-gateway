@@ -7,19 +7,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	db "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/Cypherspark/sms-gateway/internal/http"
+	"github.com/stretchr/testify/require"
 )
 
-func startAPI(t *testing.T) (*httpapi.Server, func()) {
-	pg := startPostgres(t)
-	srv := httpapi.NewServer(pg.Pool)
-	return srv, func() { pg.Term() }
+func startAPI(t *testing.T) *httpapi.Server {
+	db := db.StartTestPostgres(t)
+	return httpapi.NewServer(db.Pool)
 }
 
 func TestCreateUserTopUpSend_ListAndBalance(t *testing.T) {
-	srv, term := startAPI(t)
-	defer term()
+	srv := startAPI(t)
 	h := srv.Router()
 
 	// 1) create user

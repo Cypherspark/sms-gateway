@@ -28,6 +28,8 @@ func randomID() string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, 12)
-	for i := range b { b[i] = letters[r.Intn(len(letters))] }
+	for i := range b {
+		b[i] = letters[r.Intn(len(letters))]
+	}
 	return string(b)
 }

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/Cypherspark/sms-gateway/internal/core"
-	"github.com/stretchr/testify/require"
 	database "github.com/Cypherspark/sms-gateway/internal/db"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeProv struct{ ok bool }

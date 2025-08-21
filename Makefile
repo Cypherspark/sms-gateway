@@ -36,12 +36,10 @@ init: ## Go mod download + verify
 	$(GO) mod verify
 
 .PHONY: lint
-lint: ## golangci-lint (fast local lint)
-	@command -v golangci-lint >/dev/null 2>&1 || { \
-		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION) ..."; \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh | sh -s -- -b $$GOPATH/bin $(GOLANGCI_LINT_VERSION); \
-	}
-	golangci-lint run
+lint: ## fmt and vet
+	go fmt ./...
+	go vet ./...
+	
 
 # ---- Build & Run -----------------------------------------------------------
 .PHONY: build

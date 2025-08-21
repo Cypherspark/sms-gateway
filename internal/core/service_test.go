@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func newStore(t *testing.T) *core.Store {
 	pg := database.StartTestPostgres(t)
 	return &core.Store{DB: pg.Pool}
@@ -97,90 +96,90 @@ func TestRefundOnPermanentFailure(t *testing.T) {
 }
 
 func TestConcurrentClaim_SkipLocked_NoDuplicates(t *testing.T) {
-    s := newStore(t)
+	s := newStore(t)
 
-    uid := createUser(t, s, "acme")
-    topUp(t, s, uid, 200)
+	uid := createUser(t, s, "acme")
+	topUp(t, s, uid, 200)
 
-    const total = 100
-    for i := 0; i < total; i++ {
+	const total = 100
+	for i := 0; i < total; i++ {
 		key := strconv.Itoa(i)
-        _, _, err := s.EnqueueAndCharge(
-            context.Background(),
-            core.SendRequest{UserID: uid, To: "+49", Body: "x", IdempotencyKey: &key},
-        )
-        require.NoError(t, err)
-    }
+		_, _, err := s.EnqueueAndCharge(
+			context.Background(),
+			core.SendRequest{UserID: uid, To: "+49", Body: "x", IdempotencyKey: &key},
+		)
+		require.NoError(t, err)
+	}
 
-    // Sanity: ensure all enqueues are really queued
-    var queued int
-    err := s.DB.QueryRow(context.Background(),
-        `SELECT COUNT(*) FROM messages WHERE status='queued'`).Scan(&queued)
-    require.NoError(t, err)
-    require.Equal(t, total, queued, "precondition failed: not all messages queued")
+	// Sanity: ensure all enqueues are really queued
+	var queued int
+	err := s.DB.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM messages WHERE status='queued'`).Scan(&queued)
+	require.NoError(t, err)
+	require.Equal(t, total, queued, "precondition failed: not all messages queued")
 
-    seen := make(map[string]bool)
-    var mu sync.Mutex
-    var wg sync.WaitGroup
+	seen := make(map[string]bool)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
-    workers := 8
-    batch := 10
-    var claimed int64
+	workers := 8
+	batch := 10
+	var claimed int64
 
-    // Hard stop so test can't hang
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
+	// Hard stop so test can't hang
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-    // A small helper to record duplicates cleanly
-    dup := func(id string) {
-        t.Fatalf("duplicate claim: %s", id)
-    }
+	// A small helper to record duplicates cleanly
+	dup := func(id string) {
+		t.Fatalf("duplicate claim: %s", id)
+	}
 
-    for w := 0; w < workers; w++ {
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            for {
-                // stop once target reached or context timed out
-                if atomic.LoadInt64(&claimed) >= int64(total) {
-                    return
-                }
-                select {
-                case <-ctx.Done():
-                    return
-                default:
-                }
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				// stop once target reached or context timed out
+				if atomic.LoadInt64(&claimed) >= int64(total) {
+					return
+				}
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 
-                ids, err := s.ClaimQueuedMessages(context.Background(), batch)
-                require.NoError(t, err)
+				ids, err := s.ClaimQueuedMessages(context.Background(), batch)
+				require.NoError(t, err)
 
-                if len(ids) == 0 {
-                    // May be empty momentarily while other workers are mid-commit.
-                    // Back off briefly and keep trying until `claimed == total`.
-                    time.Sleep(5 * time.Millisecond)
-                    continue
-                }
+				if len(ids) == 0 {
+					// May be empty momentarily while other workers are mid-commit.
+					// Back off briefly and keep trying until `claimed == total`.
+					time.Sleep(5 * time.Millisecond)
+					continue
+				}
 
-                mu.Lock()
-                for _, id := range ids {
-                    if seen[id] {
-                        mu.Unlock()
-                        dup(id)
-                        return
-                    }
-                    seen[id] = true
-                }
-                mu.Unlock()
+				mu.Lock()
+				for _, id := range ids {
+					if seen[id] {
+						mu.Unlock()
+						dup(id)
+						return
+					}
+					seen[id] = true
+				}
+				mu.Unlock()
 
-                atomic.AddInt64(&claimed, int64(len(ids)))
-            }
-        }()
-    }
+				atomic.AddInt64(&claimed, int64(len(ids)))
+			}
+		}()
+	}
 
-    wg.Wait()
+	wg.Wait()
 
-    // If the timeout fired, this will be < total — fail with a helpful message.
-    require.Equal(t, int64(total), atomic.LoadInt64(&claimed),
-        "did not claim all messages before timeout")
-    require.Len(t, seen, total)
+	// If the timeout fired, this will be < total — fail with a helpful message.
+	require.Equal(t, int64(total), atomic.LoadInt64(&claimed),
+		"did not claim all messages before timeout")
+	require.Len(t, seen, total)
 }

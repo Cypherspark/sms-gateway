@@ -17,3 +17,9 @@ type Message struct {
 	DeliveredAt       *time.Time `json:"delivered_at,omitempty"`
 	Attempts          int        `json:"attempts"`
 }
+
+type Balance struct {
+	UserID    string    `json:"user_id"`
+	Balance   int       `json:"balance"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

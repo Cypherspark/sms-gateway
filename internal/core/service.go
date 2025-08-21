@@ -42,6 +42,16 @@ func (s *Store) GetBalance(ctx context.Context, userID string) (int, error) {
 	return bal, err
 }
 
+func (s *Store) GetBalanceModel(ctx context.Context, userID string) (Balance, error) {
+	var b Balance
+	err := s.DB.QueryRow(ctx, `
+		SELECT id, balance, updated_at
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&b.UserID, &b.Balance, &b.UpdatedAt)
+	return b, err
+}
+
 func (s *Store) TopUp(ctx context.Context, req TopUpRequest) error {
 	if req.Amount <= 0 {
 		return fmt.Errorf("invalid amount")

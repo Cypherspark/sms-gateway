@@ -72,12 +72,12 @@ func (s *Server) topUp(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getBalance(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	bal, err := s.Store.GetBalance(r.Context(), id)
+	bal, err := s.Store.GetBalanceModel(r.Context(), id)
 	if err != nil {
-		writeJSON(w, 404, map[string]string{"error": "user_not_found"})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"balance": bal})
+	writeJSON(w, http.StatusOK, bal)
 }
 
 func (s *Server) postMessage(w http.ResponseWriter, r *http.Request) {

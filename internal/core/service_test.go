@@ -13,22 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeProvider struct {
-	mu    sync.Mutex
-	sent  []struct{ To, Body string }
-	failN int // first failN sends fail, then succeed
-}
-
-func (f *fakeProvider) Send(ctx context.Context, to, body string) (string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.failN > 0 {
-		f.failN--
-		return "", context.DeadlineExceeded
-	}
-	f.sent = append(f.sent, struct{ To, Body string }{to, body})
-	return "prov-ok", nil
-}
 
 func newStore(t *testing.T) *core.Store {
 	pg := database.StartTestPostgres(t)

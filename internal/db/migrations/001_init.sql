@@ -5,7 +5,7 @@ CREATE TYPE msg_status AS ENUM ('queued','sending','sent','failed');
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
-    balance INTEGER NOT NULL DEFAULT 0, -- credits
+    balance INTEGER NOT NULL CHECK (balance >= 0) DEFAULT 0, -- credits
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

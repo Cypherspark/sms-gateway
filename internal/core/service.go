@@ -73,60 +73,48 @@ func (s *Store) TopUp(ctx context.Context, req TopUpRequest) error {
 }
 
 func (s *Store) EnqueueAndCharge(ctx context.Context, r SendRequest) (msgID string, already bool, err error) {
-	tx, err := s.DB.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return "", false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
+    tx, err := s.DB.BeginTx(ctx, pgx.TxOptions{})
+    if err != nil { return "", false, err }
+    defer func(){ _ = tx.Rollback(ctx) }()
 
-	// Idempotency: return existing message if key seen.
-	if r.IdempotencyKey != nil {
-		var existsID string
-		err = tx.QueryRow(ctx, `SELECT id FROM messages WHERE user_id=$1 AND idempotency_key=$2`, r.UserID, *r.IdempotencyKey).Scan(&existsID)
-		if err == nil {
-			return existsID, true, tx.Commit(ctx)
-		}
-		if err != pgx.ErrNoRows {
-			return "", false, err
-		}
-	}
+    // Idempotency: only if provided
+    if r.IdempotencyKey != nil {
+        var existsID string
+        err = tx.QueryRow(ctx,
+            `SELECT id FROM messages WHERE user_id=$1 AND idempotency_key=$2`,
+            r.UserID, *r.IdempotencyKey).Scan(&existsID)
+        if err == nil {
+            return existsID, true, tx.Commit(ctx)
+        }
+        if err != pgx.ErrNoRows {
+            return "", false, err
+        }
+    }
 
-	// Lock user, check balance.
-	var balance int
-	err = tx.QueryRow(ctx, `SELECT balance FROM users WHERE id=$1 FOR UPDATE`, r.UserID).Scan(&balance)
-	if err != nil {
-		return "", false, err
-	}
-	if balance < PricePerSMS {
-		return "", false, errInsufficientBalance
-	}
+    // Debit with a single conditional UPDATE (locks the row and checks availability)
+    ct, err := tx.Exec(ctx,
+        `UPDATE users SET balance = balance - $1 WHERE id=$2 AND balance >= $1`,
+        PricePerSMS, r.UserID)
+    if err != nil { return "", false, err }
+    if ct.RowsAffected() == 0 {
+        return "", false, errInsufficientBalance
+    }
 
-	// Debit and enqueue message.
-	_, err = tx.Exec(ctx, `UPDATE users SET balance = balance - $1 WHERE id=$2`, PricePerSMS, r.UserID)
-	if err != nil {
-		return "", false, err
-	}
+    // Insert message; IMPORTANT: pass pointer directly (nil => NULL)
+    err = tx.QueryRow(ctx, `
+        INSERT INTO messages(user_id, to_msisdn, body, status, idempotency_key)
+        VALUES($1,$2,$3,'queued',$4)
+        RETURNING id
+    `, r.UserID, r.To, r.Body, r.IdempotencyKey).Scan(&msgID)
+    if err != nil { return "", false, err }
 
-	if r.IdempotencyKey == nil {
-		empty := ""
-		r.IdempotencyKey = &empty
-	}
-	err = tx.QueryRow(ctx, `
-		INSERT INTO messages(user_id, to_msisdn, body, status, idempotency_key)
-		VALUES($1,$2,$3,'queued',$4)
-		RETURNING id
-	`, r.UserID, r.To, r.Body, *r.IdempotencyKey).Scan(&msgID)
-	if err != nil {
-		return "", false, err
-	}
+    _, err = tx.Exec(ctx, `
+        INSERT INTO balance_transactions(user_id, kind, amount, message_id)
+        VALUES($1,'debit',$2,$3)
+    `, r.UserID, PricePerSMS, msgID)
+    if err != nil { return "", false, err }
 
-	_, err = tx.Exec(ctx, `INSERT INTO balance_transactions(user_id, kind, amount, message_id)
-		VALUES($1,'debit',$2,$3)`, r.UserID, PricePerSMS, msgID)
-	if err != nil {
-		return "", false, err
-	}
-
-	return msgID, false, tx.Commit(ctx)
+    return msgID, false, tx.Commit(ctx)
 }
 
 // ClaimQueuedMessages moves up to limit messages from queued->sending using SKIP LOCKED and returns their ids.

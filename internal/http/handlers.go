@@ -98,43 +98,67 @@ func (s *Server) getBalance(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
 		return
 	}
-	writeJSON(w, http.StatusOK, bal)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user_id": id,
+		"balance": bal,
+	})
 }
 
 func (s *Server) postMessage(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("X-User-ID")
 	if userID == "" {
-		writeJSON(w, 400, map[string]string{"error": "missing_X-User-ID"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing_X-User-ID"})
 		return
 	}
+
 	idemp := r.Header.Get("Idempotency-Key")
 	var key *string
 	if idemp != "" {
 		key = &idemp
 	}
-	var in struct{ To, Body string }
+
+	var in struct {
+		To   string `json:"to"`
+		Body string `json:"body"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.To == "" || in.Body == "" {
-		writeJSON(w, 400, map[string]string{"error": "invalid_body"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_body"})
 		return
 	}
-	msgID, already, err := s.Store.EnqueueAndCharge(r.Context(), core.SendRequest{UserID: userID, To: in.To, Body: in.Body, IdempotencyKey: key})
+
+	msgID, already, err := s.Store.EnqueueAndCharge(
+		r.Context(),
+		core.SendRequest{
+			UserID:         userID,
+			To:             in.To,
+			Body:           in.Body,
+			IdempotencyKey: key,
+		},
+	)
 	if err != nil {
-		if errors.Is(err, errors.New("insufficient_balance")) {
-			writeJSON(w, 402, map[string]string{"error": "insufficient_balance"})
+		if errors.Is(err, core.ErrInsufficientBalance) {
+			writeJSON(w, http.StatusPaymentRequired, map[string]string{
+				"error": "insufficient_balance",
+			})
 			return
 		}
-		if err.Error() == "insufficient_balance" {
-			writeJSON(w, 402, map[string]string{"error": "insufficient_balance"})
-			return
-		}
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 		return
 	}
+
 	status := http.StatusAccepted
 	if already {
 		status = http.StatusOK
 	}
-	writeJSON(w, status, map[string]string{"id": msgID})
+
+	writeJSON(w, status, map[string]any{
+		"id":      msgID,
+		"user_id": userID,
+		"status":  "queued",
+		"already": already,
+	})
 }
 
 func (s *Server) listMessages(w http.ResponseWriter, r *http.Request) {

@@ -18,7 +18,7 @@ type Store struct {
 
 const PricePerSMS = 1
 
-var errInsufficientBalance = errors.New("insufficient_balance")
+var ErrInsufficientBalance = errors.New("insufficient_balance")
 
 func toPgText(p *string) pgtype.Text {
 	if p == nil {
@@ -94,7 +94,7 @@ func (s *Store) EnqueueAndCharge(ctx context.Context, r SendRequest) (msgID stri
 			return e
 		}
 		if rows == 0 {
-			return errInsufficientBalance
+			return ErrInsufficientBalance
 		}
 
 		// 3) Insert message (idempotency_key may be NULL)

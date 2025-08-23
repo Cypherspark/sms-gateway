@@ -15,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/Cypherspark/sms-gateway/internal/core"     // your domain store using sqlc
-	dbpkg "github.com/Cypherspark/sms-gateway/internal/db" // your sqlc wrapper: NewDB(*pgxpool.Pool)
+	"github.com/Cypherspark/sms-gateway/internal/core"
+	dbpkg "github.com/Cypherspark/sms-gateway/internal/db" 
 	"github.com/Cypherspark/sms-gateway/internal/provider"
 	wpkg "github.com/Cypherspark/sms-gateway/internal/worker"
 )
@@ -46,6 +46,8 @@ func main() {
 		ProviderQPS:   atofEnv("PROVIDER_QPS", 500),    // tune per provider SLA
 		ProviderBurst: atoiEnv("PROVIDER_BURST", 1000), // allow bursts
 		SendTimeout:   durEnv("WORKER_SEND_TIMEOUT_MS", 5*time.Second),
+		PerUser:       atoiEnv("WORKER_PER_USER", 5),
+		UserSlots:     atoiEnv("WORKER_USER_SLOTS", 100),
 	}
 
 	rootCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

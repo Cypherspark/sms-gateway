@@ -23,6 +23,8 @@ type WorkerOptions struct {
 	ProviderQPS   float64       // sustained provider rate
 	ProviderBurst int           // burst to allow short spikes
 	SendTimeout   time.Duration // per-send timeout
+	PerUser       int           // max messages per user per poll (e.g., 3–10)
+	UserSlots     int           // number of users to consider per poll (e.g., 50–200)
 }
 
 func RunWorker(ctx context.Context, store *core.Store, prov provider.Provider, opt WorkerOptions) error {
@@ -61,7 +63,7 @@ func RunWorker(ctx context.Context, store *core.Store, prov provider.Provider, o
 		default:
 		}
 
-		ids, err := store.ClaimQueuedMessages(ctx, opt.BatchSize)
+		ids, err := store.ClaimQueuedMessagesLRS(ctx, opt.BatchSize, opt.PerUser, opt.UserSlots)
 		if err != nil {
 			metrics.ClaimTotal.WithLabelValues("error").Inc()
 			sleep := jitter(dbBackoff, 0.20)

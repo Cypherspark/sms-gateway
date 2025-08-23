@@ -10,12 +10,13 @@ import (
 
 type Querier interface {
 	ClaimQueued(ctx context.Context, limit int32) ([]string, error)
-	CreateUser(ctx context.Context, name string) (User, error)
+	ClaimQueuedLRS(ctx context.Context, arg ClaimQueuedLRSParams) ([]string, error)
+	CreateUser(ctx context.Context, name string) (CreateUserRow, error)
 	DebitIfEnough(ctx context.Context, arg DebitIfEnoughParams) (int64, error)
 	GetBalance(ctx context.Context, id string) (int32, error)
 	GetMessage(ctx context.Context, id string) (GetMessageRow, error)
 	GetMessageByIdemKey(ctx context.Context, arg GetMessageByIdemKeyParams) (string, error)
-	GetUser(ctx context.Context, id string) (User, error)
+	GetUser(ctx context.Context, id string) (GetUserRow, error)
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (string, error)
 	ListMessages(ctx context.Context, arg ListMessagesParams) ([]ListMessagesRow, error)
 	LoadMessageForSend(ctx context.Context, id string) (LoadMessageForSendRow, error)

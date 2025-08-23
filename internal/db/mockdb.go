@@ -4,16 +4,16 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/docker/go-connections/nat"
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 	"time"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/docker/go-connections/nat"
-	"github.com/jackc/pgx/v5/pgxpool"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 //go:embed migrations/*.sql

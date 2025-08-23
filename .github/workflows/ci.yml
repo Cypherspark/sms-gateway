@@ -96,10 +96,6 @@ jobs:
 
       - name: Run unit tests (serial, no cache)
         run: |
-          # Prefer explicit go test so we can control flags.
-          # -p 1 prevents infra tests from stepping on each other.
-          # -count=1 disables test result caching.
-          # Add -race if your containers can handle the extra CPU/mem.
           go test -p 1 -count=1 -coverprofile=coverage.out ./...
 
       - name: Upload unit coverage

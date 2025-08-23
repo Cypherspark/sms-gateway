@@ -73,9 +73,10 @@ type Message struct {
 }
 
 type User struct {
-	ID        string             `json:"id"`
-	Name      string             `json:"name"`
-	Balance   int32              `json:"balance"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	Balance      int32              `json:"balance"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	LastServedAt pgtype.Timestamptz `json:"last_served_at"`
 }

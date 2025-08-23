@@ -7,6 +7,8 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -15,9 +17,17 @@ VALUES ($1)
 RETURNING id, name, balance, created_at, updated_at
 `
 
-func (q *Queries) CreateUser(ctx context.Context, name string) (User, error) {
+type CreateUserRow struct {
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	Balance   int32              `json:"balance"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, name string) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser, name)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -64,9 +74,17 @@ FROM users
 WHERE id = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
+type GetUserRow struct {
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	Balance   int32              `json:"balance"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetUser(ctx context.Context, id string) (GetUserRow, error) {
 	row := q.db.QueryRow(ctx, getUser, id)
-	var i User
+	var i GetUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

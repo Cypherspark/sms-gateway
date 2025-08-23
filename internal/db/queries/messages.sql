@@ -51,7 +51,6 @@ SET status='failed'
 WHERE id = $1;
 
 -- name: ListMessages :many
--- name: ListMessages :many
 SELECT id, user_id, to_msisdn, body, status, provider_message_id, error_code,
        requested_at, sent_at, delivered_at, attempts
 FROM messages
@@ -81,3 +80,48 @@ SELECT id, user_id, to_msisdn, body, status, provider_message_id, error_code,
        requested_at, sent_at, delivered_at, attempts
 FROM messages
 WHERE id = sqlc.arg(id);
+
+-- name: ClaimQueuedLRS :many
+WITH next_users AS (
+  SELECT u.id
+  FROM users u
+  WHERE EXISTS (
+    SELECT 1
+    FROM messages m
+    WHERE m.user_id = u.id
+      AND m.status = 'queued'
+      AND m.send_after <= now()
+  )
+  ORDER BY u.last_served_at NULLS FIRST
+  LIMIT sqlc.arg(user_slots_n)
+),
+cand AS (
+  SELECT x.id, x.user_id
+  FROM next_users u
+  CROSS JOIN LATERAL (
+    SELECT m.id, m.user_id, m.requested_at
+    FROM messages m
+    WHERE m.user_id = u.id
+      AND m.status = 'queued'
+      AND m.send_after <= now()
+    ORDER BY m.requested_at
+    LIMIT sqlc.arg(per_user_n)
+    FOR UPDATE SKIP LOCKED
+  ) AS x
+  ORDER BY x.requested_at
+  LIMIT sqlc.arg(limit_n)
+),
+upd AS (
+  UPDATE messages m
+  SET status = 'sending', updated_at = now()
+  WHERE m.id IN (SELECT id FROM cand)
+    AND m.status = 'queued'
+  RETURNING m.id, m.user_id
+),
+bump AS (
+  UPDATE users u
+  SET last_served_at = now()
+  WHERE u.id IN (SELECT DISTINCT user_id FROM upd)
+  RETURNING u.id
+)
+SELECT id FROM upd;

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"math"
 	"strconv"
 	"time"
 
@@ -154,4 +155,21 @@ func (s *Store) MarkFailedPermanent(ctx context.Context, id string) error {
 
 func (s *Store) MarkFailedPermanentAndRefund(ctx context.Context, id string) error {
 	return s.DB.Queries.MarkFailedAndRefund(ctx, id)
+}
+
+// ClaimQueuedMessagesLRS claims up to limit messages, taking at most perUser from each of
+// the least-recently-served users (considering up to userSlots users per poll).
+func (s *Store) ClaimQueuedMessagesLRS(ctx context.Context, limit, perUser, userSlots int) ([]string, error) {
+	if limit <= 0 || perUser <= 0 || userSlots <= 0 {
+		return nil, errors.New("invalid limits")
+	}
+	if limit > math.MaxInt32 || perUser > math.MaxInt32 || userSlots > math.MaxInt32 {
+		return nil, errors.New("limits too large")
+	}
+	ids, err := s.DB.Queries.ClaimQueuedLRS(ctx, dbgen.ClaimQueuedLRSParams{
+		LimitN:     int32(limit),
+		PerUserN:   int32(perUser),
+		UserSlotsN: int32(userSlots),
+	})
+	return ids, err
 }

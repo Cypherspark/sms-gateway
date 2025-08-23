@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -59,28 +58,9 @@ var (
 
 // Register default + our collectors
 func MustRegister() {
-	list := []prometheus.Collector{
-        HTTPRequests, HTTPDuration, APIEnqueue,
-        ClaimTotal, ClaimBatchSize, InFlight,
-        ProviderSendTotal, ProviderSendDuration, RetryTotal, RefundTotal,
-    }
-    for _, c := range list {
-        if err := prometheus.Register(c); err != nil {
-            log.Printf("metrics: register %T: %v", c, err)
-            if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-                switch v := c.(type) {
-                case *prometheus.CounterVec:
-                    *v = *are.ExistingCollector.(*prometheus.CounterVec)
-                case *prometheus.HistogramVec:
-                    *v = *are.ExistingCollector.(*prometheus.HistogramVec)
-                case prometheus.Counter:
-                case prometheus.Gauge:
-                }
-            }
-        } else {
-            log.Printf("metrics: registered %T OK", c)
-        }
-    }
+	prometheus.MustRegister(HTTPRequests, HTTPDuration, APIEnqueue,
+		ClaimTotal, ClaimBatchSize, InFlight,
+		ProviderSendTotal, ProviderSendDuration, RetryTotal, RefundTotal)
 }
 
 // Export a tiny pgxpool stats exporter

@@ -29,7 +29,7 @@ init: ## Go mod download + verify
 	$(GO) mod verify
 
 .PHONY: format
-lint: ## fmt and vet
+format: ## fmt and vet
 	go fmt ./...
 	go vet ./...
 

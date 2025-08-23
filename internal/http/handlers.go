@@ -8,16 +8,37 @@ import (
 	"time"
 
 	"github.com/Cypherspark/sms-gateway/internal/core"
+	dbgen "github.com/Cypherspark/sms-gateway/internal/db/gen"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Server struct {
 	Store *core.Store
 }
 
-func NewServer(db *pgxpool.Pool) *Server { return &Server{Store: &core.Store{DB: db}} }
+func toPgTimestamptz(p *time.Time) pgtype.Timestamptz {
+	if p == nil {
+		return pgtype.Timestamptz{Valid: false}
+	}
+	return pgtype.Timestamptz{Time: *p, Valid: true}
+}
+
+func toNullMsgStatus(p *string) dbgen.NullMsgStatus {
+	if p == nil {
+		return dbgen.NullMsgStatus{Valid: false}
+	}
+	return dbgen.NullMsgStatus{
+		MsgStatus: dbgen.MsgStatus(*p), // "queued" | "sending" | "sent" | "failed"
+		Valid:     true,
+	}
+}
+
+func NewServer(store *core.Store) *Server {
+	return &Server{Store: store}
+}
 
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
@@ -72,7 +93,7 @@ func (s *Server) topUp(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getBalance(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	bal, err := s.Store.GetBalanceModel(r.Context(), id)
+	bal, err := s.Store.GetBalance(r.Context(), id)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
 		return
@@ -116,27 +137,32 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, status, map[string]string{"id": msgID})
 }
 
+
 func (s *Server) listMessages(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
-		writeJSON(w, 400, map[string]string{"error": "user_id_required"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "user_id_required"})
 		return
 	}
-	var status *string
+
+	// optional filters
+	var statusPtr *string
 	if v := r.URL.Query().Get("status"); v != "" {
-		status = &v
+		statusPtr = &v
 	}
-	var from, to *time.Time
+
+	var fromPtr, toPtr *time.Time
 	if v := r.URL.Query().Get("from"); v != "" {
 		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			from = &t
+			fromPtr = &t
 		}
 	}
 	if v := r.URL.Query().Get("to"); v != "" {
 		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			to = &t
+			toPtr = &t
 		}
 	}
+
 	limit := 50
 	if v := r.URL.Query().Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 500 {
@@ -149,18 +175,44 @@ func (s *Server) listMessages(w http.ResponseWriter, r *http.Request) {
 			offset = n
 		}
 	}
-	items, err := s.Store.QueryMessages(r.Context(), userID, status, from, to, limit, offset)
+
+	params := dbgen.ListMessagesParams{
+    UserID:  userID,
+    Status:  toNullMsgStatus(statusPtr),
+    FromTs:  toPgTimestamptz(fromPtr),
+    ToTs:    toPgTimestamptz(toPtr),
+    LimitN:  int32(limit),
+    OffsetN: int32(offset),
+	}
+
+	items, err := s.Store.DB.Queries.ListMessages(r.Context(), params)
+
 	if err != nil {
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "limit": limit, "offset": offset})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":  items,
+		"limit":  limit,
+		"offset": offset,
+	})
 }
 
 func (s *Server) getMessage(w http.ResponseWriter, r *http.Request) {
-	_ = chi.URLParam(r, "id")
-	rows, err := s.Store.QueryMessages(r.Context(), "", nil, nil, nil, 1, 0)
-	_ = rows
-	_ = err // placeholder, implement if needed
-	writeJSON(w, 501, map[string]string{"error": "not_implemented"})
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id_required"})
+		return
+	}
+
+	msg, err := s.Store.DB.Queries.GetMessage(r.Context(), id)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, msg)
 }

@@ -15,7 +15,7 @@ import (
 
 func newStore(t *testing.T) *core.Store {
 	pg := database.StartTestPostgres(t)
-	return &core.Store{DB: pg.Pool}
+	return &core.Store{DB: pg}
 }
 
 func createUser(t *testing.T, s *core.Store, name string) string {
@@ -90,7 +90,7 @@ func TestRefundOnPermanentFailure(t *testing.T) {
 	msgID, _, err := s.EnqueueAndCharge(context.Background(), core.SendRequest{UserID: uid, To: "+49", Body: "x"})
 	require.NoError(t, err)
 
-	require.NoError(t, s.MarkFailedPermanentAndRefund(context.Background(), msgID))
+	require.NoError(t, s.MarkFailedPermanent(context.Background(), msgID))
 	bal, _ := s.GetBalance(context.Background(), uid)
 	require.Equal(t, 1, bal)
 }
@@ -113,7 +113,7 @@ func TestConcurrentClaim_SkipLocked_NoDuplicates(t *testing.T) {
 
 	// Sanity: ensure all enqueues are really queued
 	var queued int
-	err := s.DB.QueryRow(context.Background(),
+	err := s.DB.Pool.QueryRow(context.Background(),
 		`SELECT COUNT(*) FROM messages WHERE status='queued'`).Scan(&queued)
 	require.NoError(t, err)
 	require.Equal(t, total, queued, "precondition failed: not all messages queued")

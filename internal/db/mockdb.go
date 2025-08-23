@@ -18,11 +18,6 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-type DB struct {
-	Pool *pgxpool.Pool
-	stop func(context.Context) error
-}
-
 func StartTestPostgres(t testing.TB) *DB {
 	t.Helper()
 	ctx := context.Background()
@@ -50,7 +45,7 @@ func StartTestPostgres(t testing.TB) *DB {
 
 	applyMigrations(t, ctx, pool)
 
-	db := &DB{Pool: pool, stop: c.Terminate}
+	db := NewDB(pool)
 	t.Cleanup(func() {
 		pool.Close()
 		_ = c.Terminate(context.Background())

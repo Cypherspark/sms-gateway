@@ -1,0 +1,19 @@
+version: "2"
+sql:
+  - schema: "internal/db/migrations"
+    queries: "internal/db/queries"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "dbgen"
+        out: "internal/db/gen"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_interface: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "string"        
+          - db_type: "pg_catalog.timestamptz"
+            go_type: "time.Time"
+          - db_type: "public.msg_status"
+            go_type: "string"

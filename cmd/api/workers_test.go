@@ -22,7 +22,7 @@ func (f *fakeProv) Send(ctx context.Context, to, body string) (string, error) {
 // Light smoke-test around worker logic (claim → send → mark sent)
 func TestWorkerLikeFlow(t *testing.T) {
 	db := database.StartTestPostgres(t)
-	store := &core.Store{DB: db.Pool}
+	store := &core.Store{DB: db}
 	uid, err := store.CreateUser(context.Background(), "acme")
 	require.NoError(t, err)
 	require.NoError(t, store.TopUp(context.Background(), core.TopUpRequest{UserID: uid, Amount: 1}))

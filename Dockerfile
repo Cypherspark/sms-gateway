@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # Base + deps cache
-FROM golang:1.22-alpine AS deps
+FROM golang:1.25-alpine AS deps
 WORKDIR /src
 RUN apk add --no-cache git
 COPY go.mod go.sum ./

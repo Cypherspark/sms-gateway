@@ -1,15 +1,9 @@
-version: 2
+version: "2"
 
 run:
   timeout: 3m
   tests: true
   modules-download-mode: readonly
-  skip-dirs:
-    - internal/db/gen
-    - k8s
-    - api
-  skip-files:
-    - ".*_easyjson.go"
 
 linters:
   settings:
@@ -54,11 +48,5 @@ linters:
 
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-    - path: _test\.go
-      linters: [gocyclo, dupl]
-    - path: internal/db/.*\.go
-      text: "exported"

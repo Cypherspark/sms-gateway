@@ -33,6 +33,7 @@ func main() {
 	defer func() {
 		os.Exit(exitCode)
 	}()
+	log.Printf("Worked is starting ...")
 
 	dsn := env("DATABASE_URL", "postgres://sms:sms@localhost:5432/sms?sslmode=disable")
 
@@ -66,6 +67,7 @@ func main() {
 		exitCode = 1
 		return
 	}
+	log.Printf("Successfuly connected to database.")
 	defer pool.Close()
 
 	stopPoolMetrics := make(chan struct{})
@@ -78,7 +80,7 @@ func main() {
 	prov := provider.NewDummy()
 
 	go serveHealthzAndMetrics()
-
+	
 	if err := wpkg.RunWorker(rootCtx, store, prov, opts); err != nil && !errors.Is(err, context.Canceled) {
 		log.Printf("worker exited: %v", err)
 		exitCode = 1

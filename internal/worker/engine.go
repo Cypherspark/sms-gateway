@@ -29,10 +29,9 @@ type WorkerOptions struct {
 
 func RunWorker(ctx context.Context, store *core.Store, prov provider.Provider, opt WorkerOptions) error {
 	limiter := rate.NewLimiter(rate.Limit(opt.ProviderQPS), opt.ProviderBurst)
-
+	log.Printf("Worked started")
 	// Fixed-size worker pool reading from a jobs channel.
 	jobs := make(chan string, opt.BatchSize*2)
-
 	var wg sync.WaitGroup
 	wg.Add(opt.Concurrency)
 	for i := 0; i < opt.Concurrency; i++ {

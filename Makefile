@@ -28,10 +28,14 @@ init: ## Go mod download + verify
 	$(GO) mod download
 	$(GO) mod verify
 
-.PHONY: lint
+.PHONY: format
 lint: ## fmt and vet
 	go fmt ./...
 	go vet ./...
+
+.PHONY: lint
+lint: ## golangci-lint
+	golangci-lint run
 	
 .PHONY: build
 build: ## Build release binary to ./bin/$(APP)
@@ -90,7 +94,7 @@ migrate: ## Apply SQL migrations with psql against DATABASE_URL
 
 # ---- Quality Gates ---------------------------------------------------------
 .PHONY: check
-check: sqlc tidy fmt vet lint test ## Full local quality gate (unit tests)
+check: sqlc tidy format lint test ## Full local quality gate (unit tests)
 
 # ---- Cleaning --------------------------------------------------------------
 .PHONY: clean

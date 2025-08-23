@@ -1,5 +1,5 @@
 {
-    "yaml.schemas": {
-        "https://www.schemastore.org/yamllint.json": "file:///opt/arvan/api/openapi.yaml"
-    }
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/golangci/golangci-lint/master/.golangci.example.yml": ".golangci.yml"
+  }
 }

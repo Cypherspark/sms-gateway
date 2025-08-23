@@ -39,7 +39,7 @@ func TestTopUpAndBalance(t *testing.T) {
 
 func TestEnqueueAndCharge_IdempotentSingleDebit(t *testing.T) {
 	s := newStore(t)
-	uid := createUser(t, s, "acme")
+	uid := createUser(t, s, "acme1")
 	topUp(t, s, uid, 10)
 
 	key := "same-key"

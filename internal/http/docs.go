@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/Cypherspark/sms-gateway/api"
@@ -17,7 +18,11 @@ func (s *Server) mountDocs(r chi.Router) {
 			http.Error(w, "spec not found", http.StatusInternalServerError)
 			return
 		}
-		defer f.Close()
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Printf("error closing openapi.yaml: %v", err) // Or handle differently
+			}
+		}()
 		w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
 		_, _ = io.Copy(w, f)
 	})

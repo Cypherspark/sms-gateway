@@ -1,0 +1,64 @@
+version: 2
+
+run:
+  timeout: 3m
+  tests: true
+  modules-download-mode: readonly
+  skip-dirs:
+    - internal/db/gen
+    - k8s
+    - api
+  skip-files:
+    - ".*_easyjson.go"
+
+linters:
+  settings:
+      revive:
+        rules:
+          - name: exported
+            severity: warning
+            arguments: [ "disableStutteringCheck" ]
+          - name: if-return
+          - name: early-return
+          - name: indent-error-flow
+      gocyclo:
+        min-complexity: 18
+      dupl:
+        threshold: 120
+      misspell:
+        locale: US
+      errcheck:
+        exclude-functions:
+          - (*net/http.Server).Shutdown
+      gosec:
+        excludes:
+          - G114 
+          - G115 
+          - G404
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+    - misspell
+    - unparam
+    - gocritic
+    - whitespace
+    - durationcheck
+    - bodyclose
+    - prealloc
+    - gocyclo
+    - dupl
+    - gosec                 
+
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters: [gocyclo, dupl]
+    - path: internal/db/.*\.go
+      text: "exported"

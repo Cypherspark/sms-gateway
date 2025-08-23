@@ -15,6 +15,11 @@ import (
 )
 
 func main() {
+	var exitCode int
+	defer func() {
+		os.Exit(exitCode)
+	}()
+
 	dsn := env("DATABASE_URL", "postgres://sms:sms@localhost:5432/sms?sslmode=disable")
 
 	rootCtx, cancel := context.WithCancel(context.Background())
@@ -22,12 +27,16 @@ func main() {
 
 	pool, err := pgxpool.New(rootCtx, dsn)
 	if err != nil {
-		log.Fatalf("db: %v", err)
+		log.Printf("db: %v", err)
+		exitCode = 1
+		return
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(rootCtx); err != nil { // forces a real connection
-		log.Fatalf("db ping: %v", err)
+		log.Printf("db ping: %v", err)
+		exitCode = 1
+		return
 	}
 
 	database := dbpkg.NewDB(pool)
@@ -43,22 +52,33 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
+	errCh := make(chan error, 1)
 	go func() {
 		log.Printf("HTTP listening on %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server: %v", err)
+			errCh <- err
 		}
 	}()
 
 	// ---- Graceful shutdown ----
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	<-sig
+
+	select {
+	case s := <-sig:
+		log.Printf("signal %v received, shutting down", s)
+	case err := <-errCh:
+		log.Printf("server: %v", err)
+		exitCode = 1
+	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 	cancel()
-	_ = server.Shutdown(shutdownCtx)
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
+		exitCode = 1
+	}
 }
 
 func env(k, def string) string {

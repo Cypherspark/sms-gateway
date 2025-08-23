@@ -27,7 +27,11 @@ func env(key, def string) string {
 }
 
 func main() {
-	// ---- Config ----
+	var exitCode int
+	defer func() {
+		os.Exit(exitCode)
+	}()
+
 	dsn := env("DATABASE_URL", "postgres://sms:sms@localhost:5432/sms?sslmode=disable")
 
 	opts := wpkg.WorkerOptions{
@@ -49,15 +53,16 @@ func main() {
 	// ---- DB ----
 	pool, err := pgxpool.New(rootCtx, dsn)
 	if err != nil {
-		log.Fatalf("db pool: %v", err)
+		log.Printf("db pool: %v", err)
+		exitCode = 1
+		return
 	}
 	defer pool.Close()
 
 	if err := pool.Ping(rootCtx); err != nil {
-		log.Fatalf("db ping: %v", err)
-	}
-	if err != nil {
-		log.Fatalf("db connect: %v", err)
+		log.Printf("db ping: %v", err)
+		exitCode = 1
+		return
 	}
 	defer pool.Close()
 
@@ -72,7 +77,9 @@ func main() {
 
 	// ---- Worker ----
 	if err := wpkg.RunWorker(rootCtx, store, prov, opts); err != nil && !errors.Is(err, context.Canceled) {
-		log.Fatalf("worker exited: %v", err)
+		log.Printf("worker exited: %v", err)
+		exitCode = 1
+		return
 	}
 }
 

@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: your-registry/your-image:latest   # patched by overlays
+          image: ghcr.io/cypherspark/sms-gateway-api:dev
           imagePullPolicy: IfNotPresent
           command: ["./api"]                       # binary: cmd/api
           ports:

@@ -7,4 +7,9 @@ resources:
 
 patches:
   - path: configmap-patch.yaml
-  - path: image-patch.yaml
+
+images:
+  - name: ghcr.io/cypherspark/sms-gateway-api
+    newTag: latest
+  - name: ghcr.io/cypherspark/sms-gateway-worker
+    newTag: latest

@@ -210,6 +210,16 @@ components:
       properties:
         error: { type: string, example: "insufficient_balance" }
 
+    # ✅ Added: User schema to fix the missing $ref
+    User:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        name:       { type: string }
+        balance:    { type: integer, example: 100 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
     CreateUserRequest:
       type: object
       required: [name]

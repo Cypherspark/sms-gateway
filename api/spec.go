@@ -2,4 +2,5 @@ package api
 
 import "embed"
 
-var FS embed.FS
+//go:embed openapi.yaml
+var SpecFS embed.FS

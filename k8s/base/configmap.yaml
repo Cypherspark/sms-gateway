@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sms-config
+data:
+  HOST: "0.0.0.0"
+  PORT: "8080"
+
+  # Worker tunables (defaults from our code)
+  WORKER_BATCH: "100"
+  WORKER_CONCURRENCY: "16"
+  WORKER_POLL_MS: "200"
+  WORKER_IDLE_MS: "300"
+  WORKER_DB_BACKOFF_MIN_MS: "200"
+  WORKER_DB_BACKOFF_MAX_MS: "5000"
+  PROVIDER_QPS: "500"
+  PROVIDER_BURST: "1000"
+  WORKER_SEND_TIMEOUT_MS: "5000"
+
+  # Health sidecar (worker) optional
+  HEALTH_ADDR: "0.0.0.0:9090"

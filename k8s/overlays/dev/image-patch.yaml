@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sms-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/cypherspark/sms-gateway-api:latest
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sms-worker
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/cypherspark/sms-gateway-worker:latest

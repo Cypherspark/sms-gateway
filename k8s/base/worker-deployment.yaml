@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sms-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: sms-worker }
+  template:
+    metadata:
+      labels: { app: sms-worker }
+    spec:
+      containers:
+        - name: worker
+          image: your-registry/your-image:latest   # patched by overlays
+          imagePullPolicy: IfNotPresent
+          command: ["./worker"]                    # binary: cmd/worker
+          envFrom:
+            - configMapRef: { name: sms-config }
+            - secretRef:    { name: sms-secrets }
+          ports:
+            - name: health
+              containerPort: 9090
+          readinessProbe:
+            httpGet: { path: /healthz, port: health }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: health }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "1", memory: "512Mi" }

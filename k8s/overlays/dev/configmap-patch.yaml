@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sms-config
+data:
+  PROVIDER_QPS: "200"
+  WORKER_CONCURRENCY: "8"

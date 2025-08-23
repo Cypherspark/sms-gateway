@@ -1,0 +1,27 @@
+# VCS / editor
+.git
+.gitignore
+.vscode
+.idea
+**/*.swp
+
+# Binaries / build outputs
+bin/
+dist/
+out/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Local data
+.env
+*.local
+tmp/
+coverage.out
+
+# Node/JS (if present)
+node_modules/
+
+# Test containers artifacts
+**/testdata/

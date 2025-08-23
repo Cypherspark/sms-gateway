@@ -1,0 +1,5 @@
+{
+    "yaml.schemas": {
+        "https://www.schemastore.org/yamllint.json": "file:///opt/arvan/api/openapi.yaml"
+    }
+}

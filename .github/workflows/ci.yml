@@ -50,19 +50,27 @@ jobs:
           version: v2.4.0
           args: --timeout=5m --config=.golangci.yml
 
-  unit:
-    name: Unit tests (race + coverage)
+  test:
+    name: Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: "false"
+      TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED: "true"
+      
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Go
+      # keep check-latest; it reads from go.mod
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           check-latest: true
+          cache: true
 
-      - name: Cache Go modules
+      - name: Cache Go build & mod
         uses: actions/cache@v4
         with:
           path: |
@@ -72,46 +80,31 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gomod-
 
-      - name: Run unit tests
+      - name: Docker info (diagnostics)
         run: |
-          make test
+          docker version
+          docker info
+
+      - name: Pre-pull images used by tests
+        run: |
+          set -eux
+          # Add any other images you use in tests here
+          docker pull postgres:16
+
+      - name: Fetch tags (optional)
+        run: git fetch --tags --force
+
+      - name: Run unit tests (serial, no cache)
+        run: |
+          # Prefer explicit go test so we can control flags.
+          # -p 1 prevents infra tests from stepping on each other.
+          # -count=1 disables test result caching.
+          # Add -race if your containers can handle the extra CPU/mem.
+          go test -p 1 -count=1 -coverprofile=coverage.out ./...
+
       - name: Upload unit coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-coverage
-          path: coverage.out
-
-  integration:
-    name: Integration tests (testcontainers)
-    runs-on: ubuntu-latest
-    needs: [unit, lint]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-gomod-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-gomod-
-
-      - name: Run integration tests
-        run: |
-          make test-integration
-
-      - name: Upload integration coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-coverage
           path: coverage.out

@@ -66,6 +66,10 @@ func main() {
 	}
 	defer pool.Close()
 
+	stopPoolMetrics := make(chan struct{})
+	go metrics.NewPGXPoolStats(pool).Start(5*time.Second, stopPoolMetrics)
+	defer close(stopPoolMetrics)
+
 	pg := dbpkg.NewDB(pool)
 	store := &core.Store{DB: pg}
 

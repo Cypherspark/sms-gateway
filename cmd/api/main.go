@@ -2,16 +2,18 @@ package main
 
 import (
 	"context"
-	"github.com/Cypherspark/sms-gateway/internal/core"
-	dbpkg "github.com/Cypherspark/sms-gateway/internal/db"
-	"github.com/Cypherspark/sms-gateway/internal/http"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/Cypherspark/sms-gateway/internal/core"
+	dbpkg "github.com/Cypherspark/sms-gateway/internal/db"
+	"github.com/Cypherspark/sms-gateway/internal/http"
+	"github.com/Cypherspark/sms-gateway/internal/metrics"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -38,6 +40,10 @@ func main() {
 		exitCode = 1
 		return
 	}
+
+	stopPoolMetrics := make(chan struct{})
+	go metrics.NewPGXPoolStats(pool).Start(5*time.Second, stopPoolMetrics)
+	defer close(stopPoolMetrics)
 
 	database := dbpkg.NewDB(pool)
 	coreStore := &core.Store{DB: database}

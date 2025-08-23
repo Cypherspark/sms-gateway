@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/Cypherspark/sms-gateway/internal/core"
-	dbpkg "github.com/Cypherspark/sms-gateway/internal/db" 
+	dbpkg "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/Cypherspark/sms-gateway/internal/provider"
 	wpkg "github.com/Cypherspark/sms-gateway/internal/worker"
 )
@@ -67,7 +67,7 @@ func main() {
 		exitCode = 1
 		return
 	}
-	log.Printf("Successfuly connected to database.")
+	log.Printf("Successfully connected to database.")
 	defer pool.Close()
 
 	stopPoolMetrics := make(chan struct{})
@@ -80,7 +80,7 @@ func main() {
 	prov := provider.NewDummy()
 
 	go serveHealthzAndMetrics()
-	
+
 	if err := wpkg.RunWorker(rootCtx, store, prov, opts); err != nil && !errors.Is(err, context.Canceled) {
 		log.Printf("worker exited: %v", err)
 		exitCode = 1

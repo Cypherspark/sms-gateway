@@ -137,7 +137,6 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, status, map[string]string{"id": msgID})
 }
 
-
 func (s *Server) listMessages(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
@@ -177,12 +176,12 @@ func (s *Server) listMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := dbgen.ListMessagesParams{
-    UserID:  userID,
-    Status:  toNullMsgStatus(statusPtr),
-    FromTs:  toPgTimestamptz(fromPtr),
-    ToTs:    toPgTimestamptz(toPtr),
-    LimitN:  int32(limit),
-    OffsetN: int32(offset),
+		UserID:  userID,
+		Status:  toNullMsgStatus(statusPtr),
+		FromTs:  toPgTimestamptz(fromPtr),
+		ToTs:    toPgTimestamptz(toPtr),
+		LimitN:  int32(limit),
+		OffsetN: int32(offset),
 	}
 
 	items, err := s.Store.DB.Queries.ListMessages(r.Context(), params)

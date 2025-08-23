@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	db "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/Cypherspark/sms-gateway/internal/core"
+	db "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/Cypherspark/sms-gateway/internal/http"
 	"github.com/Cypherspark/sms-gateway/internal/provider"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,7 +27,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	database := db.NewDB(pool)          
+	database := db.NewDB(pool)
 	coreStore := &core.Store{DB: database}
 
 	// ---- Worker ----
@@ -35,7 +35,7 @@ func main() {
 	go startWorker(rootCtx, coreStore, prov)
 
 	// ---- HTTP server ----
-	srv := httpapi.NewServer(coreStore) 
+	srv := httpapi.NewServer(coreStore)
 	host := env("HOST", "0.0.0.0")
 	port := env("PORT", "8080")
 	server := &http.Server{

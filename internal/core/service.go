@@ -31,7 +31,9 @@ func toPgText(p *string) pgtype.Text {
 
 func (s *Store) CreateUser(ctx context.Context, name string) (string, error) {
 	u, err := s.DB.Queries.CreateUser(ctx, name)
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 	return u.ID, nil
 }
 
@@ -46,7 +48,9 @@ type TopUpRequest struct {
 }
 
 func (s *Store) TopUp(ctx context.Context, req TopUpRequest) error {
-	if req.Amount <= 0 { return errors.New("invalid amount") }
+	if req.Amount <= 0 {
+		return errors.New("invalid amount")
+	}
 	return s.DB.Queries.TopUp(ctx, dbgen.TopUpParams{
 		Balance: int32(req.Amount),
 		ID:      req.UserID,
@@ -76,7 +80,9 @@ func (s *Store) EnqueueAndCharge(ctx context.Context, r SendRequest) (msgID stri
 				already = true
 				return nil
 			}
-			if !errors.Is(e, pgx.ErrNoRows) { return e }
+			if !errors.Is(e, pgx.ErrNoRows) {
+				return e
+			}
 		}
 
 		// 2) Conditional debit (locks row; returns 0 rows if insufficient)
@@ -84,17 +90,23 @@ func (s *Store) EnqueueAndCharge(ctx context.Context, r SendRequest) (msgID stri
 			Balance: int32(PricePerSMS),
 			ID:      r.UserID,
 		})
-		if e != nil { return e }
-		if rows == 0 { return errInsufficientBalance }
+		if e != nil {
+			return e
+		}
+		if rows == 0 {
+			return errInsufficientBalance
+		}
 
 		// 3) Insert message (idempotency_key may be NULL)
 		id, e := q.InsertMessage(ctx, dbgen.InsertMessageParams{
 			UserID:         r.UserID,
 			ToMsisdn:       r.To,
 			Body:           r.Body,
-			IdempotencyKey: toPgText(r.IdempotencyKey), 
+			IdempotencyKey: toPgText(r.IdempotencyKey),
 		})
-		if e != nil { return e }
+		if e != nil {
+			return e
+		}
 		msgID = id
 		return nil
 	})
@@ -105,7 +117,9 @@ func (s *Store) EnqueueAndCharge(ctx context.Context, r SendRequest) (msgID stri
 
 func (s *Store) ClaimQueuedMessages(ctx context.Context, limit int) ([]string, error) {
 	ids, err := s.DB.Queries.ClaimQueued(ctx, int32(limit))
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	out := make([]string, len(ids))
 	copy(out, ids)
 	return out, nil
@@ -113,14 +127,16 @@ func (s *Store) ClaimQueuedMessages(ctx context.Context, limit int) ([]string, e
 
 func (s *Store) LoadMessageForSend(ctx context.Context, id string) (userID, to, body string, err error) {
 	row, err := s.DB.Queries.LoadMessageForSend(ctx, id)
-	if err != nil { return "", "", "", err }
+	if err != nil {
+		return "", "", "", err
+	}
 	return row.UserID, row.ToMsisdn, row.Body, nil
 }
 
 func (s *Store) MarkSent(ctx context.Context, id, providerID string) error {
 	return s.DB.Queries.MarkSent(ctx, dbgen.MarkSentParams{
-		ID:                 id,
-		ProviderMessageID:  toPgText(&providerID),
+		ID:                id,
+		ProviderMessageID: toPgText(&providerID),
 	})
 }
 

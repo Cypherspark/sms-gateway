@@ -55,8 +55,6 @@ func StartTestPostgres(t testing.TB) *DB {
 
 func applyMigrations(t testing.TB, ctx context.Context, pool *pgxpool.Pool) {
 	t.Helper()
-
-	// Load *.sql files from the embedded FS, sort by filename, exec in order.
 	entries, err := migrationsFS.ReadDir("migrations")
 	if err != nil {
 		t.Fatalf("read migrations: %v", err)

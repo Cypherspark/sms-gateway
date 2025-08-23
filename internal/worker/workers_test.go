@@ -1,4 +1,4 @@
-package main
+package worker
 
 import (
 	"context"
@@ -9,15 +9,6 @@ import (
 	database "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeProv struct{ ok bool }
-
-func (f *fakeProv) Send(ctx context.Context, to, body string) (string, error) {
-	if !f.ok {
-		return "", context.DeadlineExceeded
-	}
-	return "ok", nil
-}
 
 // Light smoke-test around worker logic (claim → send → mark sent)
 func TestWorkerLikeFlow(t *testing.T) {

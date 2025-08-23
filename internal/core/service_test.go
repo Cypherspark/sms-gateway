@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Cypherspark/sms-gateway/internal/core"
-	database "github.com/Cypherspark/sms-gateway/internal/db"
+	dbpkg "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/stretchr/testify/require"
 )
 
 func newStore(t *testing.T) *core.Store {
-	pg := database.StartTestPostgres(t)
+	pg := dbpkg.StartTestPostgres(t)
 	return &core.Store{DB: pg}
 }
 

@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/Cypherspark/sms-gateway/internal/core"
-	db "github.com/Cypherspark/sms-gateway/internal/db"
+	dbpkg "github.com/Cypherspark/sms-gateway/internal/db"
 	"github.com/Cypherspark/sms-gateway/internal/http"
 	"github.com/stretchr/testify/require"
 )
 
 func startAPI(t *testing.T) *httpapi.Server {
-	database := db.StartTestPostgres(t)
+	database := dbpkg.StartTestPostgres(t)
 	return httpapi.NewServer(&core.Store{DB: database})
 }
 

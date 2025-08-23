@@ -44,6 +44,8 @@ func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
 
+	s.mountHealth(r)
+
 	r.Post("/users", s.createUser)
 	r.Post("/users/{id}/topup", s.topUp)
 	r.Get("/users/{id}/balance", s.getBalance)

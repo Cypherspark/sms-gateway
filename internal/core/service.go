@@ -6,14 +6,14 @@ import (
 	"strconv"
 	"time"
 
-	db "github.com/Cypherspark/sms-gateway/internal/db"
+	dbpkg "github.com/Cypherspark/sms-gateway/internal/db"
 	dbgen "github.com/Cypherspark/sms-gateway/internal/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Store struct {
-	DB *db.DB
+	DB *dbpkg.DB
 }
 
 const PricePerSMS = 1

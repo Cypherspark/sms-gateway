@@ -27,6 +27,10 @@ func main() {
 	}
 	defer pool.Close()
 
+	if err := pool.Ping(rootCtx); err != nil { // forces a real connection
+		log.Fatalf("db ping: %v", err)
+	}
+
 	database := db.NewDB(pool)
 	coreStore := &core.Store{DB: database}
 

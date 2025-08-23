@@ -90,7 +90,7 @@ func TestRefundOnPermanentFailure(t *testing.T) {
 	msgID, _, err := s.EnqueueAndCharge(context.Background(), core.SendRequest{UserID: uid, To: "+49", Body: "x"})
 	require.NoError(t, err)
 
-	require.NoError(t, s.MarkFailedPermanent(context.Background(), msgID))
+	require.NoError(t, s.MarkFailedPermanentAndRefund(context.Background(), msgID))
 	bal, _ := s.GetBalance(context.Background(), uid)
 	require.Equal(t, 1, bal)
 }

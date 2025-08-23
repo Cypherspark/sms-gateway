@@ -50,6 +50,9 @@ func (s *Server) Router() http.Handler {
 	r.Post("/messages", s.postMessage)
 	r.Get("/messages", s.listMessages)
 	r.Get("/messages/{id}", s.getMessage)
+
+	s.mountDocs(r)
+
 	return r
 }
 

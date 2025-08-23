@@ -1,0 +1,259 @@
+openapi: 3.0.3
+info:
+  title: SMS Gateway API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /users:
+    post:
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /users/{id}/topup:
+    post:
+      summary: Top up a user's balance
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TopUpRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BalanceResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /users/{id}/balance:
+    get:
+      summary: Get user balance
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BalanceResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /messages:
+    post:
+      summary: Enqueue an SMS (debited from balance)
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostMessageRequest' }
+      responses:
+        '202':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostMessageResponse' }
+        '200':
+          description: Idempotent retry (already exists)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostMessageResponse' }
+        '402':
+          description: Insufficient balance
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    get:
+      summary: List messages for a user
+      parameters:
+        - $ref: '#/components/parameters/UserIdQuery'
+        - $ref: '#/components/parameters/StatusQuery'
+        - $ref: '#/components/parameters/FromQuery'
+        - $ref: '#/components/parameters/ToQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+                  limit:  { type: integer, example: 50 }
+                  offset: { type: integer, example: 0 }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /messages/{id}:
+    get:
+      summary: Get a message by id
+      parameters:
+        - $ref: '#/components/parameters/MessageIdPath'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  parameters:
+    UserIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MessageIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    UserIdHeader:
+      name: X-User-ID
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+    UserIdQuery:
+      name: user_id
+      in: query
+      required: true
+      schema: { type: string, format: uuid }
+    StatusQuery:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [queued, sending, sent, failed]
+    FromQuery:
+      name: from
+      in: query
+      required: false
+      schema: { type: string, format: date-time }
+    ToQuery:
+      name: to
+      in: query
+      required: false
+      schema: { type: string, format: date-time }
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+    OffsetQuery:
+      name: offset
+      in: query
+      required: false
+      schema: { type: integer, minimum: 0, default: 0 }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string, example: "insufficient_balance" }
+
+    CreateUserRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: "acme" }
+
+    TopUpRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount: { type: integer, minimum: 1, example: 100 }
+
+    BalanceResponse:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        balance: { type: integer, example: 100 }
+
+    PostMessageRequest:
+      type: object
+      required: [to, body]
+      properties:
+        to:   { type: string, example: "+49123456789" }
+        body: { type: string, example: "Hello world" }
+
+    PostMessageResponse:
+      type: object
+      properties:
+        id:       { type: string, format: uuid }
+        user_id:  { type: string, format: uuid }
+        status:   { type: string, example: "queued" }
+        already:  { type: boolean, example: false }
+
+    Message:
+      type: object
+      properties:
+        id:                  { type: string, format: uuid }
+        user_id:             { type: string, format: uuid }
+        to_msisdn:           { type: string }
+        body:                { type: string }
+        status:              { type: string, enum: [queued, sending, sent, failed] }
+        provider_message_id: { type: string, nullable: true }
+        error_code:          { type: string, nullable: true }
+        requested_at:        { type: string, format: date-time }
+        sent_at:             { type: string, format: date-time, nullable: true }
+        delivered_at:        { type: string, format: date-time, nullable: true }
+        attempts:            { type: integer }

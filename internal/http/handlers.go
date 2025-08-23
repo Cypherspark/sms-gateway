@@ -9,6 +9,7 @@ import (
 
 	"github.com/Cypherspark/sms-gateway/internal/core"
 	dbgen "github.com/Cypherspark/sms-gateway/internal/db/gen"
+	"github.com/Cypherspark/sms-gateway/internal/metrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
@@ -43,17 +44,16 @@ func NewServer(store *core.Store) *Server {
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
-
+	r.Use(instrument)
 	s.mountHealth(r)
-
 	r.Post("/users", s.createUser)
 	r.Post("/users/{id}/topup", s.topUp)
 	r.Get("/users/{id}/balance", s.getBalance)
 	r.Post("/messages", s.postMessage)
 	r.Get("/messages", s.listMessages)
 	r.Get("/messages/{id}", s.getMessage)
-
 	s.mountDocs(r)
+	s.mountMetrics(r)
 
 	return r
 }
@@ -142,11 +142,13 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		if errors.Is(err, core.ErrInsufficientBalance) {
+			metrics.APIEnqueue.WithLabelValues("insufficient_balance").Inc()
 			writeJSON(w, http.StatusPaymentRequired, map[string]string{
 				"error": "insufficient_balance",
 			})
 			return
 		}
+		metrics.APIEnqueue.WithLabelValues("error").Inc()
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
@@ -155,7 +157,10 @@ func (s *Server) postMessage(w http.ResponseWriter, r *http.Request) {
 
 	status := http.StatusAccepted
 	if already {
+		metrics.APIEnqueue.WithLabelValues("idempotent").Inc()
 		status = http.StatusOK
+	} else {
+		metrics.APIEnqueue.WithLabelValues("ok").Inc()
 	}
 
 	writeJSON(w, status, map[string]any{

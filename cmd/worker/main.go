@@ -11,7 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Cypherspark/sms-gateway/internal/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/Cypherspark/sms-gateway/internal/core"     // your domain store using sqlc
 	dbpkg "github.com/Cypherspark/sms-gateway/internal/db" // your sqlc wrapper: NewDB(*pgxpool.Pool)
@@ -46,11 +48,9 @@ func main() {
 		SendTimeout:   durEnv("WORKER_SEND_TIMEOUT_MS", 5*time.Second),
 	}
 
-	// ---- Context / signals ----
 	rootCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	// ---- DB ----
 	pool, err := pgxpool.New(rootCtx, dsn)
 	if err != nil {
 		log.Printf("db pool: %v", err)
@@ -69,13 +69,10 @@ func main() {
 	pg := dbpkg.NewDB(pool)
 	store := &core.Store{DB: pg}
 
-	// ---- Provider (wire your real impl here) ----
 	prov := provider.NewDummy()
 
-	// ---- Healthz ----
-	go serveHealthz()
+	go serveHealthzAndMetrics()
 
-	// ---- Worker ----
 	if err := wpkg.RunWorker(rootCtx, store, prov, opts); err != nil && !errors.Is(err, context.Canceled) {
 		log.Printf("worker exited: %v", err)
 		exitCode = 1
@@ -83,8 +80,10 @@ func main() {
 	}
 }
 
-func serveHealthz() {
+func serveHealthzAndMetrics() {
 	mux := http.NewServeMux()
+	metrics.MustRegister()
+	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))

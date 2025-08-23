@@ -19,15 +19,15 @@ spec:
             - configMapRef: { name: sms-config }
             - secretRef:    { name: sms-secrets }
           ports:
-            - name: health
+            - name: http
               containerPort: 9090
           readinessProbe:
-            httpGet: { path: /healthz, port: health }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 3
             periodSeconds: 5
             timeoutSeconds: 2
           livenessProbe:
-            httpGet: { path: /healthz, port: health }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 2
